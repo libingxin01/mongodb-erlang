@@ -161,9 +161,10 @@ write (Write) ->
 			put (mongo_lasterror, Ack),
 			case bson:lookup (err, Ack) of
 				{} -> ok; {undefined} -> ok;
-				{String} -> case bson:at (code, Ack) of
-					10058 -> throw (not_master);
-					Code -> throw ({write_failure, Code, String}) end end end.
+				{String} -> case bson:lookup (code, Ack) of
+					{10058} -> throw (not_master);
+					{Code} -> throw ({write_failure, Code, String});
+					{} -> throw (unauthorized) end end end.
 
 -spec insert (collection(), bson:document()) -> bson:value(). % Action
 %@doc Insert document into collection. Return its '_id' value, which is auto-generated if missing.
