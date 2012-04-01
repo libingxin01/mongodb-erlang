@@ -122,6 +122,7 @@ do (WriteMode, ReadMode, Connection, Database, Action) -> case connection_mode (
 			throw: E = {connection_failure, _, _} -> {failure, E};
 			throw: E = not_master -> {failure, E};
 			throw: E = unauthorized -> {failure, E};
+                        throw: E = too_many_config_updates -> {failure, E};
 			throw: E = {write_failure, _, _} -> {failure, E};
 			throw: E = {cursor_expired, _} -> {failure, E}
 		after
@@ -160,10 +161,32 @@ write (Write) ->
 			Ack = mongo_query:write (Context #context.dbconn, Write, Params),
 			put (mongo_lasterror, Ack),
 			case bson:lookup (err, Ack) of
-				{} -> ok; {undefined} -> ok;
-				{String} -> case bson:at (code, Ack) of
-					10058 -> throw (not_master);
-					Code -> throw ({write_failure, Code, String}) end end end.
+				{} -> ok;
+				{null} -> ok;
+				{String} ->
+					%%io:format("**ERROR: ~p~n",[Ack]),
+					case bson:lookup('errObjects', Ack) of
+						[H|_T] ->
+							%%io:format("using errObjects: ~p~n",[H]),
+							case bson:at(code, H) of
+								10058 -> throw(not_master);
+								Code -> throw ({write_failure, Code, String})
+							end;
+						{} ->
+							%%io:format("not using errObjects: ~p~n",[Ack]),
+							case bson:at(code, Ack) of
+								10058 -> throw (not_master);
+								Code -> throw ({write_failure, Code, String})
+							end;
+						{[Doc]} ->
+							%%io:format("Single errObjects: ~p~n",[Doc]),
+							case bson:at(code, Doc) of
+								10058 -> throw (not_master);
+								Code -> throw ({write_failure, Code, String})
+							end
+					end
+			end
+	end.
 
 -spec insert (collection(), bson:document()) -> bson:value(). % Action
 %@doc Insert document into collection. Return its '_id' value, which is auto-generated if missing.
