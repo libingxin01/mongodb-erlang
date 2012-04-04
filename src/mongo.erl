@@ -123,6 +123,7 @@ do (WriteMode, ReadMode, Connection, Database, Action) -> case connection_mode (
 			throw: E = not_master -> {failure, E};
 			throw: E = unauthorized -> {failure, E};
                         throw: E = too_many_config_updates -> {failure, E};
+            throw: E = set_shard_version_transport_error -> {failure, E};
 			throw: E = {write_failure, _, _} -> {failure, E};
 			throw: E = {cursor_expired, _} -> {failure, E}
 		after
