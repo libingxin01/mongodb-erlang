@@ -38,3 +38,14 @@ find_one(Bucket, Selector) ->
 	{Database, Connection} = Context#context.dbconn,
 	mongo_gridfs_file:new(WriteMode, ReadMode, Connection, Database, Bucket, Id).
 
+find(Selector) ->
+	find(fs, Selector).
+
+find(Bucket, Selector) ->
+	FilesColl = list_to_atom(atom_to_list(Bucket) ++ ".files"),
+	MongoCursor = mongo:find(FilesColl, Selector, {'_id', 1}),
+	Context = get(mongo_action_context),
+	WriteMode = Context#context.write_mode,
+	ReadMode = Context#context.read_mode,
+	{Database, Connection} = Context#context.dbconn,
+	mongo_gridfs_cursor:new(WriteMode, ReadMode, Connection, Database, Bucket, MongoCursor).
