@@ -4,6 +4,11 @@
 -export([delete/1, delete/2]).
 -export([find_one/1, find_one/2]).
 
+-record(context, {
+	write_mode,
+	read_mode,
+	dbconn :: mongo_connect:dbconnection() }).
+
 -spec(delete(bson:document()) -> ok).
 %@doc Deletes files matching the selector from the fs.files and fs.chunks collections.
 delete(Selector) ->
@@ -25,4 +30,11 @@ find_one(Selector) ->
 	find_one(fs, Selector).
 
 find_one(Bucket, Selector) ->
-	ok.
+	FilesColl = list_to_atom(atom_to_list(Bucket) ++ ".files"),
+	{{'_id', Id}} = mongo:find_one(FilesColl, Selector, {'_id', 1}),
+	Context = get(mongo_action_context),
+	WriteMode = Context#context.write_mode,
+	ReadMode = Context#context.read_mode,
+	{Database, Connection} = Context#context.dbconn,
+	mongo_gridfs_file:new(WriteMode, ReadMode, Connection, Database, Bucket, Id).
+

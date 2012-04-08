@@ -1,69 +1,56 @@
 -module(mongo_gridfs_file).
 
--export([]).
+-export([new/6, get_file_size/1]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
--record(state, {}).
+-record(state, {write_mode, read_mode, connection, database, bucket, id}).
 
-%% --------------------------------------------------------------------
-%% Function: init/1
-%% Description: Initiates the server
-%% Returns: {ok, State}          |
-%%          {ok, State, Timeout} |
-%%          ignore               |
-%%          {stop, Reason}
-%% --------------------------------------------------------------------
-init([]) ->
-    {ok, #state{}}.
+new(WriteMode, ReadMode, Connection, Database, Bucket, Id) ->
+	{ok, Pid} = gen_server:start_link(?MODULE, [WriteMode, ReadMode, Connection, Database, Bucket, Id], []),
+	Pid.
 
-%% --------------------------------------------------------------------
-%% Function: handle_call/3
-%% Description: Handling call messages
-%% Returns: {reply, Reply, State}          |
-%%          {reply, Reply, State, Timeout} |
-%%          {noreply, State}               |
-%%          {noreply, State, Timeout}      |
-%%          {stop, Reason, Reply, State}   | (terminate/2 is called)
-%%          {stop, Reason, State}            (terminate/2 is called)
-%% --------------------------------------------------------------------
-handle_call(Request, From, State) ->
-    Reply = ok,
+-spec(get_file_size(pid()) -> {ok, Size::integer()}).
+% Get the size of the file.
+get_file_size(Pid) ->
+	gen_server:call(Pid, file_size, infinity).
+
+%@doc Initiates the server.
+init([WriteMode, ReadMode, Connection, Database, Bucket, Id]) ->
+    {ok, #state{write_mode=WriteMode,
+				read_mode=ReadMode,
+				connection=Connection,
+				database=Database,
+				bucket=Bucket,
+				id=Id}}.
+
+%@doc Responds to synchronous messages.
+handle_call(file_size, _From, State) ->
+    Reply = file_size(State),
     {reply, Reply, State}.
 
-%% --------------------------------------------------------------------
-%% Function: handle_cast/2
-%% Description: Handling cast messages
-%% Returns: {noreply, State}          |
-%%          {noreply, State, Timeout} |
-%%          {stop, Reason, State}            (terminate/2 is called)
-%% --------------------------------------------------------------------
-handle_cast(Msg, State) ->
+%@doc Handles asynchronous messages.
+handle_cast(_Msg, State) ->
     {noreply, State}.
 
-%% --------------------------------------------------------------------
-%% Function: handle_info/2
-%% Description: Handling all non call/cast messages
-%% Returns: {noreply, State}          |
-%%          {noreply, State, Timeout} |
-%%          {stop, Reason, State}            (terminate/2 is called)
-%% --------------------------------------------------------------------
-handle_info(Info, State) ->
+%@doc Handles out of band messages.
+handle_info(_Info, State) ->
     {noreply, State}.
 
-%% --------------------------------------------------------------------
-%% Function: terminate/2
-%% Description: Shutdown the server
-%% Returns: any (ignored by gen_server)
-%% --------------------------------------------------------------------
-terminate(Reason, State) ->
+%@doc Cleans up process on completion.
+terminate(_Reason, _State) ->
     ok.
 
-%% --------------------------------------------------------------------
-%% Func: code_change/3
-%% Purpose: Convert process state when code is changed
-%% Returns: {ok, NewState}
-%% --------------------------------------------------------------------
+%@doc Updates state on code changes.
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+file_size(State) ->
+	Coll = list_to_atom(atom_to_list(State#state.bucket) ++ ".files"),
+	{ok, {{length,FileSize}}} = mongo:do(State#state.write_mode, State#state.read_mode, State#state.connection, 
+							  State#state.database, 
+							  fun() ->
+									  mongo:find_one(Coll, {'_id', State#state.id}, {'_id', 0, length, 1})
+							  end),
+	{ok, FileSize}.
