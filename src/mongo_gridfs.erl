@@ -66,7 +66,7 @@ put(Bucket, FileName, Data) ->
 	put(ChunksColl, ObjectId, 0, Data),
 	Md5 = list_to_binary(bin_to_hexstr(crypto:md5(Data))),
 	mongo:insert(FilesColl, {'_id', ObjectId, length, size(Data), chunkSize, ?CHUNK_SIZE, 
-							 uploadDate, {0,0,0}, md5, Md5, filename, FileName}).
+							 uploadDate, now(), md5, Md5, filename, FileName}).
 
 put(Coll, ObjectId, N, Data) when size(Data) =< ?CHUNK_SIZE ->
 	mongo:insert(Coll, {'files_id', ObjectId, data, {bin, bin, Data}, n, N});
