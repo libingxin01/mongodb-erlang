@@ -4,11 +4,14 @@
 -export([delete/1, delete/2]).
 -export([find_one/1, find_one/2]).
 -export([find/1, find/2]).
+-export([put/2, put/3]).
 
 -record(context, {
 	write_mode,
 	read_mode,
 	dbconn :: mongo_connect:dbconnection() }).
+
+-define(CHUNK_SIZE, 262144).
 
 -spec(delete(bson:document()) -> ok).
 %@doc Deletes files matching the selector from the fs.files and fs.chunks collections.
@@ -50,3 +53,20 @@ find(Bucket, Selector) ->
 	ReadMode = Context#context.read_mode,
 	{Database, Connection} = Context#context.dbconn,
 	mongo_gridfs_cursor:new(WriteMode, ReadMode, Connection, Database, Bucket, MongoCursor).
+
+put(FileName, Data) ->
+	put(fs, FileName, Data).
+
+put(Bucket, FileName, Data) when is_list(FileName) ->
+	put(Bucket, unicode:characters_to_binary(FileName), Data);
+put(Bucket, FileName, Data) ->
+	FilesColl = list_to_atom(atom_to_list(Bucket) ++ ".files"),
+	ChunksColl = list_to_atom(atom_to_list(Bucket) ++ ".chunks"),
+	ObjectId = mongodb_app:gen_objectid(),
+	put(ChunksColl, ObjectId, 0, Data),
+	Md5 = crypto:md5(Data),
+	mongo:insert(FilesColl, {'_id', ObjectId, length, size(Data), chunkSize, ?CHUNK_SIZE, uploadDate, {0,0,0}, md5, {bin, md5, Md5}, filename, FileName}).
+
+put(Coll, ObjectId, N, Data) when size(Data) < ?CHUNK_SIZE ->
+	mongo:insert(Coll, {'files_id', ObjectId, data, {bin, bin, Data}, n, N}).
+	

@@ -33,8 +33,6 @@ pread(Pid, Offset, Length) ->
 
 read(Pid) ->
 	Data = gen_server:call(Pid, read, infinity),
-	Md5 = get_md5(Pid),
-	Md5 = crypto:md5(Data),
 	Data.
 	
 %@doc Initiates the server.
