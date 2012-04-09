@@ -64,9 +64,16 @@ put(Bucket, FileName, Data) ->
 	ChunksColl = list_to_atom(atom_to_list(Bucket) ++ ".chunks"),
 	ObjectId = mongodb_app:gen_objectid(),
 	put(ChunksColl, ObjectId, 0, Data),
-	Md5 = crypto:md5(Data),
-	mongo:insert(FilesColl, {'_id', ObjectId, length, size(Data), chunkSize, ?CHUNK_SIZE, uploadDate, {0,0,0}, md5, {bin, md5, Md5}, filename, FileName}).
+	Md5 = list_to_binary(bin_to_hexstr(crypto:md5(Data))),
+	mongo:insert(FilesColl, {'_id', ObjectId, length, size(Data), chunkSize, ?CHUNK_SIZE, 
+							 uploadDate, {0,0,0}, md5, Md5, filename, FileName}).
 
-put(Coll, ObjectId, N, Data) when size(Data) < ?CHUNK_SIZE ->
-	mongo:insert(Coll, {'files_id', ObjectId, data, {bin, bin, Data}, n, N}).
-	
+put(Coll, ObjectId, N, Data) when size(Data) =< ?CHUNK_SIZE ->
+	mongo:insert(Coll, {'files_id', ObjectId, data, {bin, bin, Data}, n, N});
+put(Coll, ObjectId, N, Data) ->
+	<<Data1:(?CHUNK_SIZE*8), Data2/binary>> = Data,
+	mongo:insert(Coll, {'files_id', ObjectId, data, {bin, bin, <<Data1:(?CHUNK_SIZE*8)>>}, n, N}),
+	put(Coll, ObjectId, N+1, Data2).
+
+bin_to_hexstr(Bin) ->
+	lists:flatten([io_lib:format("~2.16.0B", [X]) || X <- binary_to_list(Bin)]).
