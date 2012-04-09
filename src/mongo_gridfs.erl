@@ -76,4 +76,4 @@ put(Coll, ObjectId, N, Data) ->
 	put(Coll, ObjectId, N+1, Data2).
 
 bin_to_hexstr(Bin) ->
-	lists:flatten([io_lib:format("~2.16.0B", [X]) || X <- binary_to_list(Bin)]).
+	lists:flatten([io_lib:format("~2.16.0b", [X]) || X <- binary_to_list(Bin)]).
