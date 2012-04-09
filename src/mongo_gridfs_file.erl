@@ -1,6 +1,6 @@
 -module(mongo_gridfs_file).
 
--export([new/6, close/1, get_file_size/1, pread/3, read/1]).
+-export([new/6, close/1, get_file_size/1, pread/3, read/1, get_md5/1, get_id/1, get_file_name/1]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -18,6 +18,15 @@ close(Pid) ->
 % Get the size of the file.
 get_file_size(Pid) ->
 	gen_server:call(Pid, file_size, infinity).
+
+get_md5(Pid) ->
+	gen_server:call(Pid, md5, infinity).
+
+get_id(Pid) ->
+	gen_server:call(Pid, id, infinity).
+	
+get_file_name(Pid) ->
+	gen_server:call(Pid, file_name, infinity).
 
 pread(Pid, Offset, Length) ->
 	gen_server:call(Pid, {pread, Offset, Length}, infinity).
@@ -38,6 +47,14 @@ init([WriteMode, ReadMode, Connection, Database, Bucket, Id]) ->
 handle_call(file_size, _From, State) ->
     Length = get_attribute(State, length),
     {reply, {ok, Length}, State};
+handle_call(md5, _From, State) ->
+    Md5 = get_attribute(State, md5),
+    {reply, {ok, Md5}, State};
+handle_call(file_name, _From, State) ->
+    FileName = get_attribute(State, filename),
+    {reply, {ok, FileName}, State};
+handle_call(id, _From, State) ->
+    {reply, {ok, State#state.id}, State};
 handle_call(close, _From, State) ->
 	{stop, normal, ok, State};
 handle_call(read, _From, State) ->
