@@ -3,6 +3,7 @@
 
 -export([delete/1, delete/2]).
 -export([find_one/1, find_one/2]).
+-export([find/1, find/2]).
 
 -record(context, {
 	write_mode,
