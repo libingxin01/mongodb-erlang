@@ -32,7 +32,10 @@ pread(Pid, Offset, Length) ->
 	gen_server:call(Pid, {pread, Offset, Length}, infinity).
 
 read(Pid) ->
-	gen_server:call(Pid, read, infinity).
+	Data = gen_server:call(Pid, read, infinity),
+	Md5 = get_md5(Pid),
+	Md5 = crypto:md5(Data),
+	Data.
 	
 %@doc Initiates the server.
 init([WriteMode, ReadMode, Connection, Database, Bucket, Id]) ->
