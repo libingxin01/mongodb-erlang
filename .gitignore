@@ -1,5 +1,9 @@
-deps
-*.swp
-*.swo
+ebin/*.beam
+.gitignore
+.project
+.settings/
+deps/
 .eunit/
-**/*.beam
+doc/
+*.zip
+
