@@ -6,4 +6,6 @@ deps/
 .eunit/
 doc/
 *.zip
+data/
+**/*.beam
 
